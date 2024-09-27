@@ -1,6 +1,6 @@
 #include <Adafruit_NeoPixel.h>
 
-#define PIN 6 // Pin donde está conectado el neopixel
+#define PIN 11 // Pin donde está conectado el neopixel
 #define NUMPIXELS 5 // Número de neopixels
 
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
