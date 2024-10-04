@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luna 3D con Luces Direccionales Móviles</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            position: relative;
+        }
+        canvas {
+            display: block;
+        }
+        .colorPicker {
+            position: absolute;
+            top: 20px; /* Fijo en la parte superior */
+            border: 2px solid #000;
+            padding: 10px;
+            cursor: pointer;
+            z-index: 1; /* Asegura que esté en la parte superior */
+            width: 100px; /* Ancho fijo para todos los botones */
+        }
+        #colorPicker1 { left: 20px; }
+        #colorPicker2 { left: 20px; top: 70px; }
+        #colorPicker3 { left: 20px; top: 120px; }
+        #colorPicker4 { left: 20px; top: 170px; }
+        #colorPicker5 { left: 20px; top: 220px; }
+    </style>
+</head>
+<body>
+    <input type="color" id="colorPicker1" class="colorPicker" value="#ff0000">
+    <input type="color" id="colorPicker2" class="colorPicker" value="#00ff00">
+    <input type="color" id="colorPicker3" class="colorPicker" value="#0000ff">
+    <input type="color" id="colorPicker4" class="colorPicker" value="#ffff00">
+    <input type="color" id="colorPicker5" class="colorPicker" value="#ff00ff">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let serial; // Variable para la conexión serial
+
+        // Conectar al puerto serial
+        async function connectSerial() {
+            try {
+                const port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+                serial = port;
+                listenToSerial();
+            } catch (error) {
+                console.error('No se pudo abrir el puerto serial:', error);
+            }
+        }
+
+        // Escuchar datos del serial
+        async function listenToSerial() {
+            const decoder = new TextDecoderStream();
+            const readableStreamClosed = serial.readable.pipeTo(decoder.writable);
+            const reader = decoder.readable.getReader();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    reader.releaseLock();
+                    break;
+                }
+                console.log(value); // Maneja la lectura aquí si es necesario
+            }
+        }
+
+        // Escena, cámara y renderizador
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Geometría de la Luna con la textura
+        const geometry = new THREE.SphereGeometry(2.5, 32, 32);
+        const textureLoader = new THREE.TextureLoader();
+        const texture = textureLoader.load('moon.jpg'); // Cambia esto al nombre de tu imagen local
+        const material = new THREE.MeshPhongMaterial({ map: texture });
+        const moon = new THREE.Mesh(geometry, material);
+        
+        scene.add(moon);
+
+        // Fondo de cielo estrellado desde un archivo local
+        const backgroundTexture = textureLoader.load('starry-night.jpg'); // Cambia esto al nombre de tu imagen local
+        scene.background = backgroundTexture;
+
+        // Iluminación básica
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+
+        // Grupo para las luces
+        const lightGroup = new THREE.Group();
+        scene.add(lightGroup);
+
+        // Luces direccionales
+        const colorPickers = [];
+        for (let i = 0; i < 5; i++) {
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5 * (i % 2 === 0 ? 1 : -1), 5, 5 * (i < 3 ? 1 : -1)).normalize();
+            lightGroup.add(directionalLight);
+            colorPickers.push(directionalLight);
+        }
+
+        // Posicionar cámara
+        camera.position.z = 6;
+
+        // Mover la Luna al arrastrar el mouse
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        window.addEventListener('mousedown', (event) => {
+            isDragging = true;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        window.addEventListener('mousemove', (event) => {
+            if (isDragging) {
+                const deltaMove = {
+                    x: event.clientX - previousMousePosition.x,
+                    y: event.clientY - previousMousePosition.y,
+                };
+
+                moon.rotation.y += deltaMove.x * 0.005;
+                moon.rotation.x += deltaMove.y * 0.005;
+            }
+
+            previousMousePosition = { x: event.clientX, y: event.clientY };
+        });
+
+        // Eventos para cambiar el color de las luces direccionales
+        colorPickers.forEach((light, index) => {
+            const colorPicker = document.getElementById(`colorPicker${index + 1}`);
+            colorPicker.addEventListener('input', (event) => {
+                const color = event.target.value;
+                light.color.set(color);
+                colorPicker.style.backgroundColor = color; // Cambiar el fondo del botón al color seleccionado
+
+                // Enviar color al Arduino
+                if (serial && serial.writable) {
+                    const writer = serial.writable.getWriter();
+                    const rgb = hexToRgb(color);
+                    writer.write(new TextEncoder().encode(`${index}:${rgb.r},${rgb.g},${rgb.b}\n`));
+                    writer.releaseLock();
+                }
+            });
+        });
+
+        // Función para convertir hex a RGB
+        function hexToRgb(hex) {
+            const bigint = parseInt(hex.slice(1), 16);
+            return {
+                r: (bigint >> 16) & 255,
+                g: (bigint >> 8) & 255,
+                b: bigint & 255,
+            };
+        }
+
+        // Animación
+        function animate() {
+            requestAnimationFrame(animate);
+            lightGroup.rotation.copy(moon.rotation);
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        connectSerial(); // Conectar al puerto serial
+    </script>
+</body>
+</html>
+
+
+
+<!-- 
+CODIGO ARDUINO
+
+#include <Adafruit_NeoPixel.h>
+
+#define PIN 11
+#define NUMPIXELS 5
+
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+
+void setup() {
+  Serial.begin(9600);
+  pixels.begin();
+}
+
+void loop() {
+  if (Serial.available()) {
+    String command = Serial.readStringUntil('\n');
+    int ledIndex = command.substring(0, command.indexOf(':')).toInt();
+    String rgbValues = command.substring(command.indexOf(':') + 1);
+    int r = rgbValues.substring(0, rgbValues.indexOf(',')).toInt();
+    int g = rgbValues.substring(rgbValues.indexOf(',') + 1, rgbValues.lastIndexOf(',')).toInt();
+    int b = rgbValues.substring(rgbValues.lastIndexOf(',') + 1).toInt();
+    
+    // Establecer el color del LED correspondiente
+    pixels.setPixelColor(ledIndex, pixels.Color(r, g, b));
+    pixels.show();
+  }
+}
+
+
+-->

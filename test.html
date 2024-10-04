@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botón de Color</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        #colorPicker {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid #000;
+            padding: 10px;
+            cursor: pointer;
+            z-index: 1; /* Asegura que esté en la parte superior */
+        }
+    </style>
+</head>
+<body>
+    <input type="color" id="colorPicker" value="#ffffff">
+    <script>
+        const colorPicker = document.getElementById('colorPicker');
+        
+        // Evento para cambiar el color de fondo
+        colorPicker.addEventListener('input', (event) => {
+            document.body.style.backgroundColor = event.target.value; // Cambia el color de fondo
+        });
+    </script>
+</body>
+</html>

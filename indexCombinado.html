@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tierra y Luna 3D con Luces Direccionales</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            position: relative;
+        }
+        canvas {
+            display: block;
+        }
+        .colorPicker {
+            position: absolute;
+            top: 20px; /* Fijo en la parte superior */
+            border: 2px solid #000;
+            padding: 10px;
+            cursor: pointer;
+            z-index: 1; /* Asegura que esté en la parte superior */
+            width: 100px; /* Ancho fijo para todos los botones */
+        }
+        #colorPicker1 { left: 20px; }
+        #colorPicker2 { left: 20px; top: 70px; }
+        #colorPicker3 { left: 20px; top: 120px; }
+        #colorPicker4 { left: 20px; top: 170px; }
+        #colorPicker5 { left: 20px; top: 220px; }
+        #toggleButton {
+            position: absolute;
+            top: 250px;
+            left: 20px;
+            padding: 10px;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <input type="color" id="colorPicker1" class="colorPicker" value="#ff0000">
+    <input type="color" id="colorPicker2" class="colorPicker" value="#00ff00">
+    <input type="color" id="colorPicker3" class="colorPicker" value="#0000ff">
+    <input type="color" id="colorPicker4" class="colorPicker" value="#ffff00">
+    <input type="color" id="colorPicker5" class="colorPicker" value="#ff00ff">
+    <button id="toggleButton">Cambiar a la Luna</button>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let serial; // Variable para la conexión serial
+        let showMoon = true; // Estado para mostrar la Luna o la Tierra
+        const moonTexture = 'moon.jpg'; // Asegúrate de tener esta imagen
+        const earthTexture = 'earth.jpg'; // Asegúrate de tener esta imagen
+        let currentPlanet; // Variable para la Luna o la Tierra
+        let previousPlanet; // Para animaciones fluidas
+
+        // Conectar al puerto serial
+        async function connectSerial() {
+            try {
+                const port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+                serial = port;
+                listenToSerial();
+            } catch (error) {
+                console.error('No se pudo abrir el puerto serial:', error);
+            }
+        }
+
+        // Escuchar datos del serial
+        async function listenToSerial() {
+            const decoder = new TextDecoderStream();
+            const readableStreamClosed = serial.readable.pipeTo(decoder.writable);
+            const reader = decoder.readable.getReader();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    reader.releaseLock();
+                    break;
+                }
+                console.log(value); // Maneja la lectura aquí si es necesario
+            }
+        }
+
+        // Escena, cámara y renderizador
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Función para crear un planeta
+        function createPlanet(texturePath, scale) {
+            const geometry = new THREE.SphereGeometry(scale, 32, 32);
+            const textureLoader = new THREE.TextureLoader();
+            const texture = textureLoader.load(texturePath);
+            const material = new THREE.MeshPhongMaterial({ map: texture });
+            return new THREE.Mesh(geometry, material);
+        }
+
+        // Crear Luna y Tierra
+        const moon = createPlanet(moonTexture, 2.5);
+        const earth = createPlanet(earthTexture, 3);
+        
+        scene.add(moon); // Agregar Luna a la escena
+        currentPlanet = moon; // Inicialmente mostrar la Luna
+
+        // Fondo de cielo estrellado desde un archivo local
+        const backgroundTexture = new THREE.TextureLoader().load('starry-night.jpg'); // Cambia esto al nombre de tu imagen local
+        scene.background = backgroundTexture;
+
+        // Iluminación básica
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+
+        // Grupo para las luces
+        const lightGroup = new THREE.Group();
+        scene.add(lightGroup);
+
+        // Luces direccionales
+        const colorPickers = [];
+        for (let i = 0; i < 5; i++) {
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5 * (i % 2 === 0 ? 1 : -1), 5, 5 * (i < 3 ? 1 : -1)).normalize();
+            lightGroup.add(directionalLight);
+            colorPickers.push(directionalLight);
+        }
+
+        // Posicionar cámara
+        camera.position.z = 10;
+
+        // Mover la Luna o la Tierra al arrastrar el mouse
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        window.addEventListener('mousedown', (event) => {
+            isDragging = true;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        window.addEventListener('mousemove', (event) => {
+            if (isDragging) {
+                const deltaMove = {
+                    x: event.clientX - previousMousePosition.x,
+                    y: event.clientY - previousMousePosition.y,
+                };
+
+                currentPlanet.rotation.y += deltaMove.x * 0.005;
+                currentPlanet.rotation.x += deltaMove.y * 0.005;
+            }
+
+            previousMousePosition = { x: event.clientX, y: event.clientY };
+        });
+
+        // Eventos para cambiar el color de las luces direccionales
+        colorPickers.forEach((light, index) => {
+            const colorPicker = document.getElementById(`colorPicker${index + 1}`);
+            colorPicker.addEventListener('input', (event) => {
+                const color = event.target.value;
+                light.color.set(color);
+                colorPicker.style.backgroundColor = color; // Cambiar el fondo del botón al color seleccionado
+
+                // Enviar color al Arduino
+                if (serial && serial.writable) {
+                    const writer = serial.writable.getWriter();
+                    const rgb = hexToRgb(color);
+                    writer.write(new TextEncoder().encode(`${index}:${rgb.r},${rgb.g},${rgb.b}\n`));
+                    writer.releaseLock();
+                }
+            });
+        });
+
+        // Función para convertir hex a RGB
+        function hexToRgb(hex) {
+            const bigint = parseInt(hex.slice(1), 16);
+            return {
+                r: (bigint >> 16) & 255,
+                g: (bigint >> 8) & 255,
+                b: bigint & 255,
+            };
+        }
+
+        // Cambiar entre la Tierra y la Luna
+        document.getElementById('toggleButton').addEventListener('click', () => {
+            previousPlanet = currentPlanet; // Guardar el planeta actual
+            currentPlanet = currentPlanet === moon ? earth : moon; // Alternar entre Luna y Tierra
+            animateTransition(previousPlanet, currentPlanet);
+        });
+
+        // Animación de transición
+        function animateTransition(previousPlanet, currentPlanet) {
+            const startPosition = previousPlanet.position.clone();
+            const endPosition = new THREE.Vector3(0, 0, 0);
+            const duration = 1000; // Duración de la animación en milisegundos
+            let startTime;
+
+            function animate() {
+                if (!startTime) startTime = performance.now();
+                const elapsedTime = performance.now() - startTime;
+                const t = Math.min(elapsedTime / duration, 1);
+
+                // Interpolación
+                previousPlanet.position.lerp(endPosition, t);
+                currentPlanet.position.lerp(new THREE.Vector3(0, 0, -10), t);
+
+                if (t < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    scene.remove(previousPlanet); // Quitar el planeta anterior al final de la animación
+                    scene.add(currentPlanet); // Asegurarse de que el planeta actual esté en la escena
+                }
+            }
+            animate();
+        }
+
+        // Animación
+        function animate() {
+            requestAnimationFrame(animate);
+            lightGroup.rotation.copy(currentPlanet.rotation);
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        connectSerial(); // Conectar al puerto serial
+    </script>
+</body>
