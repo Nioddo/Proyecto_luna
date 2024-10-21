@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Luna 3D con Mapas de Continentes</title>
+    <title>Luna 3D con Luces Direccionales Móviles</title>
     <style>
         body {
             margin: 0;
@@ -13,76 +13,145 @@
         canvas {
             display: block;
         }
-        .continentButton {
+        .colorPicker {
             position: absolute;
-            top: 20px; /* Fijo en la parte superior */
-            left: 20px; /* Alineado a la izquierda */
+            top: 20px;
             border: 2px solid #000;
             padding: 10px;
             cursor: pointer;
-            z-index: 1; /* Asegura que esté en la parte superior */
-            background-color: #fff; /* Fondo blanco */
+            z-index: 1;
+            width: 100px;
         }
+        #colorPicker1 { left: 20px; }
+        #colorPicker2 { left: 20px; top: 70px; }
+        #colorPicker3 { left: 20px; top: 120px; }
+        #colorPicker4 { left: 20px; top: 170px; }
+        #colorPicker5 { left: 20px; top: 220px; }
 
-        #mapOverlay {
-            position: absolute;
+        /* Estilos para el mapa */
+        #mapContainer {
+            display: none; /* Oculto por defecto */
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            display: none; /* Oculto por defecto */
+            background-color: rgba(0, 0, 0, 0.7); /* Fondo oscuro */
+            z-index: 2; /* Asegura que esté por encima */
             justify-content: center;
             align-items: center;
-            opacity: 0; /* Inicialmente oculto */
-            transition: opacity 0.5s ease; /* Transición de opacidad */
+            opacity: 0; /* Inicialmente invisible */
+            transition: opacity 0.5s ease; /* Transición suave */
         }
-        
-        
-        #continentMap {
-            max-width: 90%;
-            max-height: 90%;
-            opacity: 0; /* Inicialmente oculto */
-            transform: scale(0.8); /* Escala inicial */
-            transition: opacity 1s ease, transform 1s ease; /* Transiciones para opacidad y escala */
+        #mapContainer.show {
+            display: flex; /* Muestra el contenedor */
+            opacity: 1; /* Hacer visible */
         }
-        
-        
-        .backButton {
+        #mapFrame {
+            background-color: white; /* Fondo blanco */
+            border: 5px solid black; /* Recuadro negro */
+            padding: 10px; /* Menos padding */
+            display: flex;
+            flex-direction: column; /* Para el botón de cerrar */
+            justify-content: center;
+            align-items: center;
+            max-width: 80%; /* Ancho máximo */
+            max-height: 80%; /* Alto máximo */
+        }
+        #earthMap {
+            max-width: 100%; /* Ajustar el tamaño del mapa */
+            max-height: 70%; /* Limitar la altura del mapa */
+        }
+
+        /* Estilo del botón */
+        #showMapButton {
             position: absolute;
-            bottom: 20px; /* Nueva posición en la parte inferior */
-            right: 20px; /* Alineado a la derecha */
-            border: 2px solid #000;
-            padding: 10px;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
             cursor: pointer;
-            z-index: 1; /* Asegura que esté en la parte superior */
-            background-color: #fff; /* Fondo blanco */
-            display: none; /* Oculto por defecto */
+            z-index: 1;
+        }
+        #closeMapButton {
+            margin-top: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        /* Estilos para los inputs de color de los continentes */
+        .colorInputs {
+            display: flex;
+            flex-wrap: wrap; /* Para que se distribuyan en múltiples filas si es necesario */
+            justify-content: center; /* Centrar los inputs */
+            margin-top: 20px; /* Espaciado superior */
+        }
+        .colorInput {
+            width: 50px; /* Ancho del input */
+            height: 50px; /* Alto del input */
+            border: 2px solid #000; /* Bordes */
+            margin: 5px; /* Espaciado entre inputs */
+            cursor: pointer; /* Cambiar el cursor al pasar por encima */
         }
     </style>
 </head>
 <body>
-    <button id="africaButton" class="continentButton">África</button>
-    <button id="asiaButton" class="continentButton" style="top: 70px;">Asia</button>
-    <button id="europaButton" class="continentButton" style="top: 120px;">Europa</button>
-    <button id="americaButton" class="continentButton" style="top: 170px;">América</button>
-    <button id="oceaniaButton" class="continentButton" style="top: 220px;">Oceanía</button>
+    <input type="color" id="colorPicker1" class="colorPicker" value="#ff0000">
+    <input type="color" id="colorPicker2" class="colorPicker" value="#00ff00">
+    <input type="color" id="colorPicker3" class="colorPicker" value="#0000ff">
+    <input type="color" id="colorPicker4" class="colorPicker" value="#ffff00">
+    <input type="color" id="colorPicker5" class="colorPicker" value="#ff00ff">
     
-    <div id="mapOverlay">
-        <img id="continentMap" src="" alt="Mapa del continente">
-        
-        <input type="color" id="colorPicker" style="display: none; position: absolute; top: 83%; left: 53%; transform: translate(-50%, -50%); z-index: 2; width: 30px; height: 30px" />
-        <input type="color" id="colorPickerUSA" style="display: none; position: absolute; top: 32%; left: 45%; transform: translate(-50%, -50%); z-index: 2; width: 30px; height: 30px" />
-        <input type="color" id="colorPickerCanada" style="display: none; position: absolute; top: 23%; left: 46%; transform: translate(-50%, -50%); z-index: 2; width: 30px; height: 30px" />
-        <input type="color" id="colorPickerMexico" style="display: none; position: absolute; top: 44%; left: 44%; transform: translate(-50%, -50%); z-index: 2; width: 30px; height: 30px" />
-        <input type="color" id="colorPickerBrazil" style="display: none; position: absolute; top: 64%; left: 57%; transform: translate(-50%, -50%); z-index: 2; width: 30px; height: 30px" />
+    <!-- Botón para mostrar el mapa -->
+    <button id="showMapButton">Mostrar Mapa</button>
 
-        
-        <button id="backButton" class="backButton">Volver a la Tierra</button>
+    <!-- Contenedor del mapa -->
+    <div id="mapContainer">
+        <div id="mapFrame">
+            <img id="earthMap" src="mapa_mundi.webp" alt="Mapa del Mundo">
+            <div class="colorInputs">
+                <input type="color" id="colorAfrica" class="colorInput" value="#ff0000">
+                <input type="color" id="colorAsia" class="colorInput" value="#00ff00">
+                <input type="color" id="colorEurope" class="colorInput" value="#0000ff">
+                <input type="color" id="colorNorthAmerica" class="colorInput" value="#ffff00">
+                <input type="color" id="colorSouthAmerica" class="colorInput" value="#ff00ff">
+                <input type="color" id="colorAustralia" class="colorInput" value="#00ffff">
+            </div>
+            <button id="closeMapButton">Cerrar Mapa</button>
+        </div>
     </div>
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+        let serial; // Variable para la conexión serial
+
+        // Conectar al puerto serial
+        async function connectSerial() {
+            try {
+                const port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+                serial = port;
+                listenToSerial();
+            } catch (error) {
+                console.error('No se pudo abrir el puerto serial:', error);
+            }
+        }
+
+        // Escuchar datos del serial
+        async function listenToSerial() {
+            const decoder = new TextDecoderStream();
+            const readableStreamClosed = serial.readable.pipeTo(decoder.writable);
+            const reader = decoder.readable.getReader();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    reader.releaseLock();
+                    break;
+                }
+                console.log(value);
+            }
+        }
+
         // Escena, cámara y renderizador
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -91,10 +160,10 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Geometría de la Luna con la textura
+        // Geometría de la Luna
         const geometry = new THREE.SphereGeometry(2.5, 32, 32);
         const textureLoader = new THREE.TextureLoader();
-        const texture = textureLoader.load('https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Blue_Marble_2002.png/1280px-Blue_Marble_2002.png'); // Cambia esto al nombre de tu imagen local
+        const texture = textureLoader.load('moon.jpg'); // Cambia esto al nombre de tu imagen local
         const material = new THREE.MeshPhongMaterial({ map: texture });
         const moon = new THREE.Mesh(geometry, material);
         
@@ -104,13 +173,22 @@
         const backgroundTexture = textureLoader.load('starry-night.jpg'); // Cambia esto al nombre de tu imagen local
         scene.background = backgroundTexture;
 
-        // Iluminación básica
+        // Iluminación
         const ambientLight = new THREE.AmbientLight(0x404040);
         scene.add(ambientLight);
 
-        // Luz direccional que se mueve con la Luna
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        scene.add(directionalLight);
+        // Grupo para las luces
+        const lightGroup = new THREE.Group();
+        scene.add(lightGroup);
+
+        // Luces direccionales
+        const colorPickers = [];
+        for (let i = 0; i < 5; i++) {
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5 * (i % 2 === 0 ? 1 : -1), 5, 5 * (i < 3 ? 1 : -1)).normalize();
+            lightGroup.add(directionalLight);
+            colorPickers.push(directionalLight);
+        }
 
         // Posicionar cámara
         camera.position.z = 6;
@@ -136,198 +214,91 @@
 
                 moon.rotation.y += deltaMove.x * 0.005;
                 moon.rotation.x += deltaMove.y * 0.005;
-
-                // Mover la luz direccional
-                directionalLight.position.set(5 * (Math.sin(moon.rotation.y)), 5, 5 * (Math.cos(moon.rotation.y))).normalize();
             }
 
             previousMousePosition = { x: event.clientX, y: event.clientY };
         });
 
-        // Funciones para manejar el cambio de mapas
-        const continentMapUrls = {
-            africa: 'mapa_africa.jpg', // Cambia esto por la URL de tu mapa
-            asia: 'mapa_asia.jpg', // Cambia esto por la URL de tu mapa
-            europa: 'mapa_europa.jpg', // Cambia esto por la URL de tu mapa
-            america: 'mapa_america.jpg', // Cambia esto por la URL de tu mapa
-            oceania: 'mapa_oceania.jpg', // Cambia esto por la URL de tu mapa
-        };
+        // Eventos para cambiar el color de las luces direccionales
+        colorPickers.forEach((light, index) => {
+            const colorPicker = document.getElementById(`colorPicker${index + 1}`);
+            colorPicker.addEventListener('input', (event) => {
+                const color = event.target.value;
+                light.color.set(color);
+                colorPicker.style.backgroundColor = color; // Cambiar el fondo del botón al color seleccionado
 
-        function loadMap(continent) {
-            const mapImage = continentMapUrls[continent];
-            const mapOverlay = document.getElementById('mapOverlay');
-            const continentMap = document.getElementById('continentMap');
-            const backButton = document.getElementById('backButton');
-            const colorPicker = document.getElementById('colorPicker'); 
-            const colorPickerUSA = document.getElementById('colorPickerUSA'); // Nueva referencia
-            const colorPickerCanada = document.getElementById('colorPickerCanada'); // Nueva referencia
-            const colorPickerMexico = document.getElementById('colorPickerMexico'); // Nueva referencia
-            const colorPickerBrazil = document.getElementById('colorPickerBrazil'); // Nueva referencia
-        
-            // Ocultar los botones de continentes
-            document.querySelectorAll('.continentButton').forEach(button => {
-                button.style.display = 'none'; // Ocultar todos los botones
-            });
-        
-            // Asegurarse de que el mapa esté oculto antes de la animación
-            continentMap.style.opacity = '0';
-            continentMap.style.transform = 'scale(0.8)';
-        
-            // Mostrar la superposición
-            mapOverlay.style.display = 'flex'; 
-        
-            // Restablecer opacidad a 0 antes de mostrar
-            mapOverlay.style.opacity = '0'; 
-        
-            // Esperar un poco y luego cambiar la opacidad
-            setTimeout(() => {
-                mapOverlay.style.opacity = '1'; // Hacerlo visible con un desvanecimiento
-            }, 10); // Pequeño retraso para permitir el cambio de display
-        
-            // Establecer la fuente de la imagen del mapa
-            continentMap.src = mapImage; 
-        
-            // Mostrar el botón de volver después de un retraso
-            setTimeout(() => {
-                backButton.style.display = 'block'; // Mostrar el botón de volver
-            }, 1000); // Ajusta este valor para el tiempo que desees en milisegundos
-        
-            // Mostrar el input de color general
-            setTimeout(() => {
-                colorPicker.style.display = 'block'; // Mostrar el input de color
-                // Mostrar inputs de color adicionales solo si el continente es América
-                if (continent === 'america') {
-                    colorPickerUSA.style.display = 'block';
-                    colorPickerCanada.style.display = 'block';
-                    colorPickerMexico.style.display = 'block';
-                    colorPickerBrazil.style.display = 'block';
-                } else {
-                    // Ocultar inputs de color adicionales para otros continentes
-                    colorPickerUSA.style.display = 'none';
-                    colorPickerCanada.style.display = 'none';
-                    colorPickerMexico.style.display = 'none';
-                    colorPickerBrazil.style.display = 'none';
+                // Enviar color al Arduino
+                if (serial && serial.writable) {
+                    const writer = serial.writable.getWriter();
+                    const rgb = hexToRgb(color);
+                    writer.write(new TextEncoder().encode(`${index}:${rgb.r},${rgb.g},${rgb.b}\n`));
+                    writer.releaseLock();
                 }
-            }, 2000); // Ajusta este valor para el tiempo que desees en milisegundos
-        
-            // Animar la escala de la Luna hacia 0
-            const scaleAnimation = (duration) => {
-                let start = null;
-                let modifier = 1;
-                const initialScale = moon.scale.x;
-        
-                const animate = (timestamp) => {
-                    if (!start) start = timestamp;
-                    const elapsed = timestamp - start;
-        
-                    const progress = Math.min(elapsed / (duration * 1.2), 1);
-                    const newScale = (initialScale * (1 + progress));
-                    moon.scale.set(newScale * modifier, newScale * modifier, newScale * modifier);
-                    modifier += 0.0027;
-        
-                    if (progress < 1) {
-                        requestAnimationFrame(animate);
-                    } else {
-                        // Una vez que la Luna está escalada, animar el mapa
-                        setTimeout(() => {
-                            continentMap.style.opacity = '1'; // Hacerlo visible
-                            continentMap.style.transform = 'scale(1)'; // Escalar a su tamaño original
-                        }); // Pequeño retraso para la transición
-                    }
-                };
-        
-                requestAnimationFrame(animate);
-            };
-        
-            scaleAnimation(1000); // Animar durante 1 segundo
-        }
-        
-        
-        
-        
-        
-        function returnToMoon() {
-            const mapOverlay = document.getElementById('mapOverlay');
-            const backButton = document.getElementById('backButton');
-            const continentMap = document.getElementById('continentMap');
-        
-            // Mostrar los botones de continentes de nuevo
-            document.querySelectorAll('.continentButton').forEach(button => {
-                button.style.display = 'block'; // Volver a mostrar todos los botones
             });
-        
-            // Hacer que el mapa esté oculto antes de la animación
-            continentMap.style.opacity = '0'; 
-            continentMap.style.transform = 'scale(0.8)'; // Restablecer escala
-        
-            // Ocultar el mapa y el botón de volver
-            backButton.style.display = 'none'; // Ocultar el botón de volver
-            mapOverlay.style.opacity = '0'; // Restablecer opacidad a 0
-        
-            // Temporizador para ocultar completamente el overlay
-            setTimeout(() => {
-                mapOverlay.style.display = 'none'; // Ocultar la superposición después de desvanecerse
-            }, 500); // El tiempo debe coincidir con la duración de la transición de opacidad
-        
-            // Obtener la escala inicial de la Luna
-            const initialScale = moon.scale.x; // Guardar la escala actual de la Luna
-        
-            // Animar la escala de la Luna hacia su tamaño original
-            const scaleAnimation = (targetScale, duration) => {
-                let start = null;
-        
-                const animate = (timestamp) => {
-                    if (!start) start = timestamp;
-                    const elapsed = timestamp - start;
-        
-                    const progress = Math.min(elapsed / duration, 1);
-                    const newScale = initialScale + (targetScale - initialScale) * progress; // Escalar desde la escala inicial hasta el tamaño objetivo
-                    moon.scale.set(newScale, newScale, newScale);
-        
-                    if (progress < 1) {
-                        requestAnimationFrame(animate);
-                    }
-                };
-        
-                requestAnimationFrame(animate);
+        });
+
+        // Función para convertir hex a RGB
+        function hexToRgb(hex) {
+            const bigint = parseInt(hex.slice(1), 16);
+            return {
+                r: (bigint >> 16) & 255,
+                g: (bigint >> 8) & 255,
+                b: bigint & 255,
             };
-        
-            scaleAnimation(1, 1000); // Animar hacia 2.5 durante 1 segundo
         }
-        
-        
 
-        
-        
+        // Manejador para los inputs de color de los continentes
+        const continentColorPickers = [
+            document.getElementById('colorAfrica'),
+            document.getElementById('colorAsia'),
+            document.getElementById('colorEurope'),
+            document.getElementById('colorNorthAmerica'),
+            document.getElementById('colorSouthAmerica'),
+            document.getElementById('colorAustralia')
+        ];
 
-        // Asignar eventos a los botones
-        document.getElementById('africaButton').addEventListener('click', () => loadMap('africa'));
-        document.getElementById('asiaButton').addEventListener('click', () => loadMap('asia'));
-        document.getElementById('europaButton').addEventListener('click', () => loadMap('europa'));
-        document.getElementById('americaButton').addEventListener('click', () => loadMap('america'));
-        document.getElementById('oceaniaButton').addEventListener('click', () => loadMap('oceania'));
-        document.getElementById('backButton').addEventListener('click', returnToMoon);
+        continentColorPickers.forEach((colorPicker, index) => {
+            colorPicker.addEventListener('input', (event) => {
+                const color = event.target.value;
 
-        // Cerrar superposición al hacer clic en la imagen, pero evitar que se cierre al hacer clic en el input de color
-        document.getElementById('mapOverlay').addEventListener('click', (event) => {
-            if (event.target === mapOverlay) { // Solo cerrar si se hizo clic en el área de fondo
-                returnToMoon(); // Volver a la luna al hacer clic en el mapa
-            }
+                // Enviar color a Arduino
+                if (serial && serial.writable) {
+                    const writer = serial.writable.getWriter();
+                    const rgb = hexToRgb(color);
+                    writer.write(new TextEncoder().encode(`${index}:${rgb.r},${rgb.g},${rgb.b}\n`));
+                    writer.releaseLock();
+                }
+            });
         });
-
-        // Agregar un evento al input de color para detener la propagación del evento
-        document.getElementById('colorPicker').addEventListener('click', (event) => {
-            event.stopPropagation(); // Detener la propagación para evitar que el clic cierre el mapa
-        });
-
 
         // Animación
         function animate() {
             requestAnimationFrame(animate);
+            lightGroup.rotation.copy(moon.rotation);
             renderer.render(scene, camera);
         }
-        
+
         animate();
+        connectSerial(); // Conectar al puerto serial
+
+        // Manejador del botón para mostrar el mapa
+        document.getElementById('showMapButton').addEventListener('click', () => {
+            const mapContainer = document.getElementById('mapContainer');
+            mapContainer.classList.add('show'); // Muestra el contenedor
+        });
+
+        // Manejador del botón para cerrar el mapa
+        document.getElementById('closeMapButton').addEventListener('click', () => {
+            const mapContainer = document.getElementById('mapContainer');
+            mapContainer.classList.remove('show'); // Oculta el contenedor
+        });
+
+        // Cerrar el mapa al hacer clic fuera de él
+        document.getElementById('mapContainer').addEventListener('click', (event) => {
+            if (event.target === event.currentTarget) {
+                event.currentTarget.classList.remove('show'); // Oculta el contenedor
+            }
+        });
     </script>
 </body>
 </html>
